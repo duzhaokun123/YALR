@@ -40,7 +40,9 @@ Yet Another [Locale_Remulator](https://github.com/InWILL/Locale_Remulator)
 
 `目标`输入进程名或完整路径 (其实这东西有问题 是按字符串结尾匹配的 也就是说 bar.exe 会匹配到 foo-bar.exe)
 
-`LCID`输入要修改成的 LCID 常见语言与`LCID`对照见[下表](#LCID)
+`LCID`输入要修改成的 LCID `0`不修改 常见语言与`LCID`对照见[下表](#LCID)
+
+`CodePage`输入要修改成的 CodePage `0`不修改
 
 ## LCID
 

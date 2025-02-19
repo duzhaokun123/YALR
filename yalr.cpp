@@ -2,11 +2,10 @@
 // @id              o0kam1-yalr
 // @name            YALR
 // @description     Yet Another Locale Remulator 
-// @version         0.1
+// @version         0.1.1
 // @author          o0kam1
 // @github          https://github.com/duzhaokun123
 // @include         *
-// @compilerOptions -lcomdlg32
 // ==/WindhawkMod==
 
 // ==WindhawkModReadme==
@@ -26,6 +25,8 @@ see https://github.com/duzhaokun123/YALR
       $name:zh-CN: 目标
     - lcid: 0
       $name: LCID
+    - codePage: 0
+      $name: Code Page
   $name: Target EXE
 */
 // ==/WindhawkModSettings==
@@ -39,16 +40,17 @@ see https://github.com/duzhaokun123/YALR
 #include <winscard.h>
 #include <cstring>
 
-#define FUNC_HOOK(funcName, returnType, params) \
-using funcName##_t = decltype(&funcName); \
-funcName##_t funcName##_orig; \
-returnType funcName##_hook params; \
-boolean initHook_##funcName() { \
-    return Wh_SetFunctionHook((void*)funcName, (void*)funcName##_hook, (void**)&funcName##_orig); \
-}; \
+#define FUNC_HOOK(funcName, returnType, params)                                                     \
+using funcName##_t = decltype(&funcName);                                                           \
+funcName##_t funcName##_orig;                                                                       \
+returnType funcName##_hook params;                                                                  \
+boolean initHook_##funcName() {                                                                     \
+    return Wh_SetFunctionHook((void*)funcName, (void*)funcName##_hook, (void**)&funcName##_orig);   \
+};                                                                                                  \
 returnType funcName##_hook params
 
 #define RETURN_LCID { return settings.lcid; }
+#define RETRUN_CODEPAGE { return settings.codePage; }
 
 bool hasEndingW(const WCHAR* fullString, const WCHAR* ending) {
     auto fullStringLength = wcslen(fullString);
@@ -64,6 +66,7 @@ bool hasEndingW(const WCHAR* fullString, const WCHAR* ending) {
 
 struct {
     LCID lcid;
+    UINT codePage;
 } settings;
 
 // using WinMain_t = decltype(&WinMain);
@@ -111,20 +114,31 @@ FUNC_HOOK(GetLocaleInfoEx, int, (LPCWSTR lpLocaleName, LCTYPE LCType, LPWSTR lpL
     return GetLocaleInfoEx_orig(localeName, LCType, lpLCData, cchData);
 }
 
+FUNC_HOOK(GetACP, UINT, (void)) RETRUN_CODEPAGE
+
+FUNC_HOOK(GetOEMCP, UINT, (void)) RETRUN_CODEPAGE
+
 void initHooks() {
-    initHook_GetSystemDefaultLangID();
-    initHook_GetSystemDefaultLCID();
-    initHook_GetSystemDefaultUILanguage();
-    initHook_GetSystemDefaultLocaleName();
-    initHook_GetUserDefaultLangID();
-    initHook_GetUserDefaultLCID();
-    initHook_GetUserDefaultUILanguage();
-    initHook_GetUserDefaultLocaleName();
-    initHook_GetThreadLocale();
-    initHook_GetThreadUILanguage();
-    initHook_GetLocaleInfoA();
-    initHook_GetLocaleInfoW();
-    initHook_GetLocaleInfoEx();
+    if (settings.lcid) {
+        initHook_GetSystemDefaultLangID();
+        initHook_GetSystemDefaultLCID();
+        initHook_GetSystemDefaultUILanguage();
+        initHook_GetSystemDefaultLocaleName();
+        initHook_GetUserDefaultLangID();
+        initHook_GetUserDefaultLCID();
+        initHook_GetUserDefaultUILanguage();
+        initHook_GetUserDefaultLocaleName();
+        initHook_GetThreadLocale();
+        initHook_GetThreadUILanguage();
+        initHook_GetLocaleInfoA();
+        initHook_GetLocaleInfoW();
+        initHook_GetLocaleInfoEx();
+    }
+
+    if (settings.codePage) {
+        initHook_GetACP();
+        initHook_GetOEMCP();
+    }
 }
 
 // The mod is being initialized, load settings, hook functions, and do other
@@ -144,6 +158,7 @@ BOOL Wh_ModInit() {
         Wh_Log(L"load for %s match %s", exe, target);
         
         settings.lcid = Wh_GetIntSetting(L"targetExe[%d].lcid", i);
+        settings.codePage = Wh_GetIntSetting(L"targetExe[%d].codePage", i);
         initHooks();
 
         return true;
