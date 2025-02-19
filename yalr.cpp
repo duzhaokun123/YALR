@@ -33,23 +33,25 @@ see https://github.com/duzhaokun123/YALR
 
 #include <libloaderapi.h>
 #include <minwindef.h>
+#include <stringapiset.h>
 #include <windhawk_api.h>
 #include <windows.h>
+#include <winerror.h>
 #include <winnls.h>
 #include <winnt.h>
 #include <winscard.h>
 #include <cstring>
 
-#define FUNC_HOOK(funcName, returnType, params)                                                     \
+#define FUNC_HOOK(funcName, returnType, params, code)                                                     \
 using funcName##_t = decltype(&funcName);                                                           \
 funcName##_t funcName##_orig;                                                                       \
-returnType funcName##_hook params;                                                                  \
+returnType funcName##_hook params code;                                                                  \
 boolean initHook_##funcName() {                                                                     \
     return Wh_SetFunctionHook((void*)funcName, (void*)funcName##_hook, (void**)&funcName##_orig);   \
 };                                                                                                  \
-returnType funcName##_hook params
 
 #define RETURN_LCID { return settings.lcid; }
+#define RETURN_LOCALE_NAME { return settings.localeName; }
 #define RETRUN_CODEPAGE { return settings.codePage; }
 
 bool hasEndingW(const WCHAR* fullString, const WCHAR* ending) {
@@ -64,6 +66,14 @@ bool hasEndingW(const WCHAR* fullString, const WCHAR* ending) {
     return false;
 }
 
+WCHAR* cstrToCwstr(const CHAR* cstr) {
+    auto cstrLen = strlen(cstr); 
+    auto wstrLen = cstrLen;
+    auto wstr = new WCHAR[wstrLen + 1];
+    MultiByteToWideChar(CP_ACP, 0, cstr, cstrLen, wstr, wstrLen);
+    return wstr;
+}
+
 struct {
     LCID lcid;
     UINT codePage;
@@ -76,47 +86,103 @@ struct {
 //     return WinMain_Orig(hInstance, hPrevInstance, lpCmdLine, nShowCmd);
 // }
 
-FUNC_HOOK(GetSystemDefaultLangID, LANGID, (void)) RETURN_LCID
+FUNC_HOOK(GetSystemDefaultLangID, LANGID, (void), RETURN_LCID);
 
-FUNC_HOOK(GetSystemDefaultLCID, LCID, (void)) RETURN_LCID
+FUNC_HOOK(GetSystemDefaultLCID, LCID, (void), RETURN_LCID);
 
-FUNC_HOOK(GetSystemDefaultUILanguage, LANGID, (void)) RETURN_LCID
+FUNC_HOOK(GetSystemDefaultUILanguage, LANGID, (void), RETURN_LCID);
 
-FUNC_HOOK(GetSystemDefaultLocaleName, int, (LPWSTR lpLocaleName, int cchLocaleName)) {
+FUNC_HOOK(GetSystemDefaultLocaleName, int, (LPWSTR lpLocaleName, int cchLocaleName), {
     return GetLocaleInfoW(settings.lcid, LOCALE_SNAME, lpLocaleName, cchLocaleName);
-}
+});
 
-FUNC_HOOK(GetUserDefaultLangID, LANGID, (void)) RETURN_LCID
+FUNC_HOOK(GetUserDefaultLangID, LANGID, (void), RETURN_LCID);
 
-FUNC_HOOK(GetUserDefaultLCID, LCID, (void)) RETURN_LCID
+FUNC_HOOK(GetUserDefaultLCID, LCID, (void), RETURN_LCID);
 
-FUNC_HOOK(GetUserDefaultUILanguage, LANGID, (void)) RETURN_LCID
+FUNC_HOOK(GetUserDefaultUILanguage, LANGID, (void), RETURN_LCID);
 
-FUNC_HOOK(GetUserDefaultLocaleName, int, (LPWSTR lpLocaleName, int cchLocaleName)) {
+FUNC_HOOK(GetUserDefaultLocaleName, int, (LPWSTR lpLocaleName, int cchLocaleName), {
     return GetLocaleInfoW(settings.lcid, LOCALE_SNAME, lpLocaleName, cchLocaleName);
-}
+});
 
-FUNC_HOOK(GetThreadLocale, LCID, (void)) RETURN_LCID
+FUNC_HOOK(GetThreadLocale, LCID, (void), RETURN_LCID);
 
-FUNC_HOOK(GetThreadUILanguage, LCID, (void)) RETURN_LCID
+FUNC_HOOK(GetThreadUILanguage, LCID, (void), RETURN_LCID);
 
-FUNC_HOOK(GetLocaleInfoA, int, (LCID Locale, LCTYPE LCType, LPSTR lpLCData, int cchData)) {
+FUNC_HOOK(GetLocaleInfoA, int, (LCID Locale, LCTYPE LCType, LPSTR lpLCData, int cchData), {
     return GetLocaleInfoA_orig(settings.lcid, LCType, lpLCData, cchData);
-}
+});
 
-FUNC_HOOK(GetLocaleInfoW, int, (LCID Locale, LCTYPE LCType, LPWSTR lpLCData, int cchData)) {
+FUNC_HOOK(GetLocaleInfoW, int, (LCID Locale, LCTYPE LCType, LPWSTR lpLCData, int cchData), {
     return GetLocaleInfoW_orig(settings.lcid, LCType, lpLCData, cchData);
-}
+});
 
-FUNC_HOOK(GetLocaleInfoEx, int, (LPCWSTR lpLocaleName, LCTYPE LCType, LPWSTR lpLCData, int cchData)) {
+FUNC_HOOK(GetLocaleInfoEx, int, (LPCWSTR lpLocaleName, LCTYPE LCType, LPWSTR lpLCData, int cchData), {
     auto localeName = new WCHAR[LOCALE_NAME_MAX_LENGTH]();
     GetSystemDefaultLocaleName(localeName, LOCALE_NAME_MAX_LENGTH);
     return GetLocaleInfoEx_orig(localeName, LCType, lpLCData, cchData);
-}
+});
 
-FUNC_HOOK(GetACP, UINT, (void)) RETRUN_CODEPAGE
+FUNC_HOOK(GetACP, UINT, (void), RETRUN_CODEPAGE);
 
-FUNC_HOOK(GetOEMCP, UINT, (void)) RETRUN_CODEPAGE
+FUNC_HOOK(GetOEMCP, UINT, (void), RETRUN_CODEPAGE);
+
+FUNC_HOOK(WideCharToMultiByte, int, (UINT CodePage, DWORD dwFlags, LPCWCH lpWideCharStr, int cchWideChar, LPSTR lpMultiByteStr, int cbMultiByte, LPCCH lpDefaultChar, LPBOOL lpUsedDefaultChar), {
+    auto newCodePage = CodePage;
+    switch (CodePage) {
+        case CP_ACP:
+        case CP_OEMCP:
+        case CP_THREAD_ACP:
+            newCodePage = settings.codePage;
+    }
+    return WideCharToMultiByte_orig(newCodePage, dwFlags, lpWideCharStr, cchWideChar, lpMultiByteStr, cbMultiByte, lpDefaultChar, lpUsedDefaultChar);
+});
+
+FUNC_HOOK(MultiByteToWideChar, int, (UINT CodePage, DWORD dwFlags, LPCCH lpMultiByteStr, int cbMultiByte, LPWSTR lpWideCharStr, int cchWideChar), {
+    auto newCodePage = CodePage;
+    switch (CodePage) {
+        case CP_ACP:
+        case CP_OEMCP:
+        case CP_THREAD_ACP:
+            newCodePage = settings.codePage;
+    }
+    return MultiByteToWideChar_orig(newCodePage, dwFlags, lpMultiByteStr, cbMultiByte, lpWideCharStr, cchWideChar);
+});
+
+FUNC_HOOK(MessageBoxA, int, (HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType), {
+    auto lpTextW = cstrToCwstr(lpText);
+    auto lpCaptionW = cstrToCwstr(lpCaption);
+    return MessageBoxW(hWnd, lpTextW, lpCaptionW, uType);
+});
+
+FUNC_HOOK(MessageBoxExA, int, (HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType, WORD wLanguageId), {
+    auto lpTextW = cstrToCwstr(lpText);
+    auto lpCaptionW = cstrToCwstr(lpCaption);
+    return MessageBoxExW(hWnd, lpTextW, lpCaptionW, uType, wLanguageId);
+});
+
+// FUNC_HOOK(MessageBoxIndirectA, int, (CONST MSGBOXPARAMSA* lpmbp), {
+//     auto lpmbpW = MSGBOXPARAMSW {
+//         .cbSize = lpmbp->cbSize,
+//     }; // <- got error: too many arguments provided to function-like macro invocation
+//     return MessageBoxIndirectA_orig(lpmbp);
+// });
+
+FUNC_HOOK(MessageBoxIndirectA, int, (CONST MSGBOXPARAMSA* lpmbp), {
+    auto lpmbpW = MSGBOXPARAMSW {};
+    lpmbpW.cbSize               = lpmbp->cbSize;
+    lpmbpW.hwndOwner            = lpmbp->hwndOwner;
+    lpmbpW.hInstance            = lpmbp->hInstance;
+    lpmbpW.lpszText             = cstrToCwstr(lpmbp->lpszText);
+    lpmbpW.lpszCaption          = cstrToCwstr(lpmbp->lpszCaption);
+    lpmbpW.dwStyle              = lpmbp->dwStyle;
+    lpmbpW.lpszIcon             = (LPCWSTR)lpmbp->lpszIcon;
+    lpmbpW.dwContextHelpId      = lpmbp->dwContextHelpId;
+    lpmbpW.lpfnMsgBoxCallback   = lpmbp->lpfnMsgBoxCallback;
+    lpmbpW.dwLanguageId         = lpmbp->dwLanguageId;
+    return MessageBoxIndirectW(&lpmbpW);
+});
 
 void initHooks() {
     if (settings.lcid) {
@@ -138,7 +204,13 @@ void initHooks() {
     if (settings.codePage) {
         initHook_GetACP();
         initHook_GetOEMCP();
+        initHook_WideCharToMultiByte();
+        initHook_MultiByteToWideChar();
     }
+
+    // initHook_MessageBoxA();
+    // initHook_MessageBoxExA();
+    // initHook_MessageBoxIndirectA();
 }
 
 // The mod is being initialized, load settings, hook functions, and do other
