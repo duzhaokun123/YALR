@@ -1,12 +1,17 @@
-import sys
-import pyperclip
+from datetime import datetime, UTC
+from typing import TextIO
+
 from colorama import Fore, Style
+
+funcHooks = []
+initHooks = []
+structConverts = []
 
 
 def main():
     global lastAFunc, lastWFunc
     global lastAStruct, lastWStruct
-    for line in sys.stdin:
+    for line in open('input.cpp', 'r').readlines():
         tokenize(line)
         if lastAFunc is not None and lastWFunc is not None:
             generateFuncHook()
@@ -17,7 +22,43 @@ def main():
             lastAStruct = None
             lastWStruct = None
 
-    print(f'{Fore.RED}EOF{Style.RESET_ALL}')
+    print(f'collect {len(funcHooks)} func hooks')
+    print(f'collect {len(structConverts)} struct converts')
+
+    with open('yalr.cpp', 'w') as out:
+        for line in open('yalr.temp.cpp', 'r').readlines():
+            if line.startswith('!replace'):
+                eval(f'write_{line[9:-1]}(out)')
+            else:
+                out.write(line)
+
+
+def write_readme(out: TextIO):
+    out.write('## codegen info\n')
+    out.write(f'time: {datetime.now(UTC)}\n')
+    out.write(f'{len(funcHooks)} func hooks\n')
+    out.write(f'{len(structConverts)} struct converts\n')
+
+
+def write_convert(out: TextIO):
+    out.write('// begin of codegen: struct convert\n')
+    for convert in structConverts:
+        out.write(convert)
+    out.write('// end of codegen: struct convert\n')
+
+
+def write_funcHook(out: TextIO):
+    out.write('// begin of codegen: func hook\n')
+    for hook in funcHooks:
+        out.write(hook)
+    out.write('// end of codegen: func hook\n')
+
+
+def write_initHook(out: TextIO):
+    out.write('// begin of codegen: init hook\n')
+    for hook in initHooks:
+        out.write(hook)
+    out.write('// end of codegen: init hook\n')
 
 
 def tokenize(code: str):
@@ -241,6 +282,8 @@ def generateFuncHook():
         raise Exception("return type not match")
     if len(lastAFunc.arguments) != len(lastWFunc.arguments):
         raise Exception("arguments count not match")
+    if lastAFunc.name[:-1] != lastWFunc.name[:-1]:
+        print(f'{Fore.YELLOW}warning: {Fore.CYAN}{lastAFunc.name}{Fore.YELLOW} and {Fore.CYAN}{lastWFunc.name}{Fore.YELLOW} not match{Style.RESET_ALL}')
 
     funcHook = ""
     funcHook += f'FUNC_HOOK({lastAFunc.name}, {lastAFunc.returnType}, ('
@@ -262,12 +305,8 @@ def generateFuncHook():
     initHook = ""
     initHook += f'initHook_{lastAFunc.name}();\n'
 
-    print(f'{Fore.YELLOW}copied FUNC_HOOK...{Style.RESET_ALL}')
-    print(funcHook)
-    print(initHook)
-
-    pyperclip.copy(initHook)
-    pyperclip.copy(funcHook)
+    funcHooks.append(funcHook)
+    initHooks.append(initHook)
 
 
 def generateStructConvert():
@@ -275,6 +314,8 @@ def generateStructConvert():
 
     if len(lastAStruct.fields) != len(lastWStruct.fields):
         raise Exception("fields count not match")
+    if lastAStruct.name[:-1] != lastWStruct.name[:-1]:
+        print(f'{Fore.YELLOW}warning: {Fore.CYAN}{lastAStruct.name}{Fore.YELLOW} and {Fore.CYAN}{lastWStruct.name}{Fore.YELLOW} not match{Style.RESET_ALL}')
 
     convert = ""
     convert += f'const {lastWStruct.name}* {lastAStruct.name}to{lastWStruct.name}(const {lastAStruct.name}* in) {{\n'
@@ -287,10 +328,7 @@ def generateStructConvert():
     convert += '    return out;\n'
     convert += '}\n'
 
-    print(f'{Fore.YELLOW}copied struct convert...{Style.RESET_ALL}')
-    print(convert)
-
-    pyperclip.copy(convert)
+    structConverts.append(convert)
 
 
 if __name__ == '__main__':

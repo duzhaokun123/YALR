@@ -28,10 +28,14 @@ Yet Another [Locale_Remulator](https://github.com/InWILL/Locale_Remulator)
 1. 安装 [Windhawk](https://windhawk.net/) 这是一个适用于 Windows x86/x64 的全局注入和 Hook 框架
 2. 启用`Windhawk`的`开发着选项`
 3. 新建 Mod
-4. 如原样复制[yalr.cpp](yalr.cpp)并替换**全部**代码
+4. 下载最新的`yalr.vX.Y.Z.cpp`并替换**全部**代码
 5. 点击`Compile Mod`编译 Mod
 6. 点击`Exit Editing Mode`退出编辑模式
 7. 使用
+
+## 构建
+
+见 [Build.md](Build.md)
 
 ## 配置
 

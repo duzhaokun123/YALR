@@ -2,7 +2,7 @@
 // @id              o0kam1-yalr
 // @name            YALR
 // @description     Yet Another Locale Remulator
-// @version         0.1.1
+// @version         0.2.0
 // @author          o0kam1
 // @github          https://github.com/duzhaokun123
 // @include         *
@@ -14,6 +14,8 @@
 see https://github.com/duzhaokun123/YALR
 
 本 Mod 未在(也不会在) Windhawk Mod 仓库发布
+
+!replace readme
 */
 // ==/WindhawkModReadme==
 
@@ -91,68 +93,12 @@ LPCSTR LPCWSTRtoLPCSTR(LPCWSTR wstr) {
     return cstr;
 }
 
-// begin of generated code
-
-const MSGBOXPARAMSW* MSGBOXPARAMSAtoMSGBOXPARAMSW(const MSGBOXPARAMSA* in) {
-    auto out = new MSGBOXPARAMSW;
-    out->cbSize = in->cbSize;
-    out->hwndOwner = in->hwndOwner;
-    out->hInstance = in->hInstance;
-    out->lpszText = LPCSTRtoLPCWSTR(in->lpszText);
-    out->lpszCaption = LPCSTRtoLPCWSTR(in->lpszCaption);
-    out->dwStyle = in->dwStyle;
-    out->lpszIcon = LPCSTRtoLPCWSTR(in->lpszIcon);
-    out->dwContextHelpId = in->dwContextHelpId;
-    out->lpfnMsgBoxCallback = in->lpfnMsgBoxCallback;
-    out->dwLanguageId = in->dwLanguageId;
-    return out;
-}
-
-const WNDCLASSW* WNDCLASSAtoWNDCLASSW(const WNDCLASSA* in) {
-    auto out = new WNDCLASSW;
-    out->style = in->style;
-    out->lpfnWndProc = in->lpfnWndProc;
-    out->cbClsExtra = in->cbClsExtra;
-    out->cbWndExtra = in->cbWndExtra;
-    out->hInstance = in->hInstance;
-    out->hIcon = in->hIcon;
-    out->hCursor = in->hCursor;
-    out->hbrBackground = in->hbrBackground;
-    out->lpszMenuName = LPCSTRtoLPCWSTR(in->lpszMenuName);
-    out->lpszClassName = LPCSTRtoLPCWSTR(in->lpszClassName);
-    return out;
-}
-
-const WNDCLASSEXW* WNDCLASSEXAtoWNDCLASSEXW(const WNDCLASSEXA* in) {
-    auto out = new WNDCLASSEXW;
-    out->cbSize = in->cbSize;
-    out->style = in->style;
-    out->lpfnWndProc = in->lpfnWndProc;
-    out->cbClsExtra = in->cbClsExtra;
-    out->cbWndExtra = in->cbWndExtra;
-    out->hInstance = in->hInstance;
-    out->hIcon = in->hIcon;
-    out->hCursor = in->hCursor;
-    out->hbrBackground = in->hbrBackground;
-    out->lpszMenuName = LPCSTRtoLPCWSTR(in->lpszMenuName);
-    out->lpszClassName = LPCSTRtoLPCWSTR(in->lpszClassName);
-    out->hIconSm = in->hIconSm;
-    return out;
-}
-
-// end of generated code
+!replace convert
 
 struct {
     LCID lcid;
     UINT codePage;
 } settings;
-
-// using WinMain_t = decltype(&WinMain);
-// WinMain_t WinMain_Orig;
-// int WinMain_Hook(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
-//     Wh_Log(L"before WinMain");
-//     return WinMain_Orig(hInstance, hPrevInstance, lpCmdLine, nShowCmd);
-// }
 
 FUNC_HOOK(GetSystemDefaultLangID, LANGID, (void), RETURN_LCID);
 
@@ -218,49 +164,7 @@ FUNC_HOOK(MultiByteToWideChar, int, (UINT CodePage, DWORD dwFlags, LPCCH lpMulti
     return MultiByteToWideChar_orig(newCodePage, dwFlags, lpMultiByteStr, cbMultiByte, lpWideCharStr, cchWideChar);
 });
 
-// begin of generated code
-
-FUNC_HOOK(MessageBoxA, int, (HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType), {
-    auto p0 = hWnd;
-    auto p1 = LPCSTRtoLPCWSTR(lpText);
-    auto p2 = LPCSTRtoLPCWSTR(lpCaption);
-    auto p3 = uType;
-    auto ret = MessageBoxW(p0, p1, p2, p3);
-    return ret;
-});
-
-FUNC_HOOK(MessageBoxExA, int, (HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType, WORD wLanguageId), {
-    auto p0 = hWnd;
-    auto p1 = LPCSTRtoLPCWSTR(lpText);
-    auto p2 = LPCSTRtoLPCWSTR(lpCaption);
-    auto p3 = uType;
-    auto p4 = wLanguageId;
-    auto ret = MessageBoxExW(p0, p1, p2, p3, p4);
-    return ret;
-});
-
-
-FUNC_HOOK(MessageBoxIndirectA, int, (const MSGBOXPARAMSA* lpmbp), {
-    auto p0 = MSGBOXPARAMSAtoMSGBOXPARAMSW(lpmbp);
-    auto ret = MessageBoxIndirectW(p0);
-    return ret;
-});
-
-
-FUNC_HOOK(RegisterClassA, ATOM, (const WNDCLASSA* lpWndClass), {
-    auto p0 = WNDCLASSAtoWNDCLASSW(lpWndClass);
-    auto ret = RegisterClassW(p0);
-    return ret;
-});
-
-
-FUNC_HOOK(RegisterClassExA, ATOM, (const WNDCLASSEXA* unnamedParam1), {
-    auto p0 = WNDCLASSEXAtoWNDCLASSEXW(unnamedParam1);
-    auto ret = RegisterClassExW(p0);
-    return ret;
-});
-
-// end of generated code
+!replace funcHook
 
 void initHooks() {
     if (settings.lcid) {
@@ -286,13 +190,7 @@ void initHooks() {
         initHook_MultiByteToWideChar();
     }
 
-// begin of generated code
-    initHook_MessageBoxA();
-    initHook_MessageBoxExA();
-    initHook_MessageBoxIndirectA();
-    initHook_RegisterClassA();
-    initHook_RegisterClassExA();
-// end of generated code
+!replace initHook
 }
 
 // The mod is being initialized, load settings, hook functions, and do other
