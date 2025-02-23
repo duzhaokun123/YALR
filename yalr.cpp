@@ -1,7 +1,7 @@
 // ==WindhawkMod==
 // @id              o0kam1-yalr
 // @name            YALR
-// @description     Yet Another Locale Remulator 
+// @description     Yet Another Locale Remulator
 // @version         0.1.1
 // @author          o0kam1
 // @github          https://github.com/duzhaokun123
@@ -34,6 +34,7 @@ see https://github.com/duzhaokun123/YALR
 #include <libloaderapi.h>
 #include <minwindef.h>
 #include <stringapiset.h>
+#include <wincon.h>
 #include <windhawk_api.h>
 #include <windows.h>
 #include <winerror.h>
@@ -41,17 +42,17 @@ see https://github.com/duzhaokun123/YALR
 #include <winnt.h>
 #include <winscard.h>
 #include <cstring>
+#include <cwchar>
 
-#define FUNC_HOOK(funcName, returnType, params, code)                                                     \
+#define FUNC_HOOK(funcName, returnType, params, code)                                               \
 using funcName##_t = decltype(&funcName);                                                           \
 funcName##_t funcName##_orig;                                                                       \
-returnType funcName##_hook params code;                                                                  \
+returnType funcName##_hook params code;                                                             \
 boolean initHook_##funcName() {                                                                     \
     return Wh_SetFunctionHook((void*)funcName, (void*)funcName##_hook, (void**)&funcName##_orig);   \
-};                                                                                                  \
+}
 
 #define RETURN_LCID { return settings.lcid; }
-#define RETURN_LOCALE_NAME { return settings.localeName; }
 #define RETRUN_CODEPAGE { return settings.codePage; }
 
 bool hasEndingW(const WCHAR* fullString, const WCHAR* ending) {
@@ -66,13 +67,80 @@ bool hasEndingW(const WCHAR* fullString, const WCHAR* ending) {
     return false;
 }
 
-WCHAR* cstrToCwstr(const CHAR* cstr) {
-    auto cstrLen = strlen(cstr); 
+LPCWSTR LPCSTRtoLPCWSTR(LPCSTR cstr) {
+    if (cstr == nullptr) {
+        return nullptr;
+    }
+    auto cstrLen = strlen(cstr);
     auto wstrLen = cstrLen;
     auto wstr = new WCHAR[wstrLen + 1];
-    MultiByteToWideChar(CP_ACP, 0, cstr, cstrLen, wstr, wstrLen);
+    auto n = MultiByteToWideChar(CP_ACP, 0, cstr, cstrLen, wstr, wstrLen);
+    wstr[n] = L'\0';
     return wstr;
 }
+
+LPCSTR LPCWSTRtoLPCSTR(LPCWSTR wstr) {
+    if (wstr == nullptr) {
+        return nullptr;
+    }
+    auto wstrLen = wcslen(wstr);
+    auto cstrLen = wstrLen * 2;
+    auto cstr = new CHAR[cstrLen + 1];
+    auto n = WideCharToMultiByte(CP_ACP, 0, wstr, wstrLen, cstr, cstrLen, nullptr, nullptr);
+    cstr[n] = '\0';
+    return cstr;
+}
+
+// begin of generated code
+
+const MSGBOXPARAMSW* MSGBOXPARAMSAtoMSGBOXPARAMSW(const MSGBOXPARAMSA* in) {
+    auto out = new MSGBOXPARAMSW;
+    out->cbSize = in->cbSize;
+    out->hwndOwner = in->hwndOwner;
+    out->hInstance = in->hInstance;
+    out->lpszText = LPCSTRtoLPCWSTR(in->lpszText);
+    out->lpszCaption = LPCSTRtoLPCWSTR(in->lpszCaption);
+    out->dwStyle = in->dwStyle;
+    out->lpszIcon = LPCSTRtoLPCWSTR(in->lpszIcon);
+    out->dwContextHelpId = in->dwContextHelpId;
+    out->lpfnMsgBoxCallback = in->lpfnMsgBoxCallback;
+    out->dwLanguageId = in->dwLanguageId;
+    return out;
+}
+
+const WNDCLASSW* WNDCLASSAtoWNDCLASSW(const WNDCLASSA* in) {
+    auto out = new WNDCLASSW;
+    out->style = in->style;
+    out->lpfnWndProc = in->lpfnWndProc;
+    out->cbClsExtra = in->cbClsExtra;
+    out->cbWndExtra = in->cbWndExtra;
+    out->hInstance = in->hInstance;
+    out->hIcon = in->hIcon;
+    out->hCursor = in->hCursor;
+    out->hbrBackground = in->hbrBackground;
+    out->lpszMenuName = LPCSTRtoLPCWSTR(in->lpszMenuName);
+    out->lpszClassName = LPCSTRtoLPCWSTR(in->lpszClassName);
+    return out;
+}
+
+const WNDCLASSEXW* WNDCLASSEXAtoWNDCLASSEXW(const WNDCLASSEXA* in) {
+    auto out = new WNDCLASSEXW;
+    out->cbSize = in->cbSize;
+    out->style = in->style;
+    out->lpfnWndProc = in->lpfnWndProc;
+    out->cbClsExtra = in->cbClsExtra;
+    out->cbWndExtra = in->cbWndExtra;
+    out->hInstance = in->hInstance;
+    out->hIcon = in->hIcon;
+    out->hCursor = in->hCursor;
+    out->hbrBackground = in->hbrBackground;
+    out->lpszMenuName = LPCSTRtoLPCWSTR(in->lpszMenuName);
+    out->lpszClassName = LPCSTRtoLPCWSTR(in->lpszClassName);
+    out->hIconSm = in->hIconSm;
+    return out;
+}
+
+// end of generated code
 
 struct {
     LCID lcid;
@@ -150,39 +218,49 @@ FUNC_HOOK(MultiByteToWideChar, int, (UINT CodePage, DWORD dwFlags, LPCCH lpMulti
     return MultiByteToWideChar_orig(newCodePage, dwFlags, lpMultiByteStr, cbMultiByte, lpWideCharStr, cchWideChar);
 });
 
+// begin of generated code
+
 FUNC_HOOK(MessageBoxA, int, (HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType), {
-    auto lpTextW = cstrToCwstr(lpText);
-    auto lpCaptionW = cstrToCwstr(lpCaption);
-    return MessageBoxW(hWnd, lpTextW, lpCaptionW, uType);
+    auto p0 = hWnd;
+    auto p1 = LPCSTRtoLPCWSTR(lpText);
+    auto p2 = LPCSTRtoLPCWSTR(lpCaption);
+    auto p3 = uType;
+    auto ret = MessageBoxW(p0, p1, p2, p3);
+    return ret;
 });
 
 FUNC_HOOK(MessageBoxExA, int, (HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType, WORD wLanguageId), {
-    auto lpTextW = cstrToCwstr(lpText);
-    auto lpCaptionW = cstrToCwstr(lpCaption);
-    return MessageBoxExW(hWnd, lpTextW, lpCaptionW, uType, wLanguageId);
+    auto p0 = hWnd;
+    auto p1 = LPCSTRtoLPCWSTR(lpText);
+    auto p2 = LPCSTRtoLPCWSTR(lpCaption);
+    auto p3 = uType;
+    auto p4 = wLanguageId;
+    auto ret = MessageBoxExW(p0, p1, p2, p3, p4);
+    return ret;
 });
 
-// FUNC_HOOK(MessageBoxIndirectA, int, (CONST MSGBOXPARAMSA* lpmbp), {
-//     auto lpmbpW = MSGBOXPARAMSW {
-//         .cbSize = lpmbp->cbSize,
-//     }; // <- got error: too many arguments provided to function-like macro invocation
-//     return MessageBoxIndirectA_orig(lpmbp);
-// });
 
-FUNC_HOOK(MessageBoxIndirectA, int, (CONST MSGBOXPARAMSA* lpmbp), {
-    auto lpmbpW = MSGBOXPARAMSW {};
-    lpmbpW.cbSize               = lpmbp->cbSize;
-    lpmbpW.hwndOwner            = lpmbp->hwndOwner;
-    lpmbpW.hInstance            = lpmbp->hInstance;
-    lpmbpW.lpszText             = cstrToCwstr(lpmbp->lpszText);
-    lpmbpW.lpszCaption          = cstrToCwstr(lpmbp->lpszCaption);
-    lpmbpW.dwStyle              = lpmbp->dwStyle;
-    lpmbpW.lpszIcon             = (LPCWSTR)lpmbp->lpszIcon;
-    lpmbpW.dwContextHelpId      = lpmbp->dwContextHelpId;
-    lpmbpW.lpfnMsgBoxCallback   = lpmbp->lpfnMsgBoxCallback;
-    lpmbpW.dwLanguageId         = lpmbp->dwLanguageId;
-    return MessageBoxIndirectW(&lpmbpW);
+FUNC_HOOK(MessageBoxIndirectA, int, (const MSGBOXPARAMSA* lpmbp), {
+    auto p0 = MSGBOXPARAMSAtoMSGBOXPARAMSW(lpmbp);
+    auto ret = MessageBoxIndirectW(p0);
+    return ret;
 });
+
+
+FUNC_HOOK(RegisterClassA, ATOM, (const WNDCLASSA* lpWndClass), {
+    auto p0 = WNDCLASSAtoWNDCLASSW(lpWndClass);
+    auto ret = RegisterClassW(p0);
+    return ret;
+});
+
+
+FUNC_HOOK(RegisterClassExA, ATOM, (const WNDCLASSEXA* unnamedParam1), {
+    auto p0 = WNDCLASSEXAtoWNDCLASSEXW(unnamedParam1);
+    auto ret = RegisterClassExW(p0);
+    return ret;
+});
+
+// end of generated code
 
 void initHooks() {
     if (settings.lcid) {
@@ -208,9 +286,13 @@ void initHooks() {
         initHook_MultiByteToWideChar();
     }
 
-    // initHook_MessageBoxA();
-    // initHook_MessageBoxExA();
-    // initHook_MessageBoxIndirectA();
+// begin of generated code
+    initHook_MessageBoxA();
+    initHook_MessageBoxExA();
+    initHook_MessageBoxIndirectA();
+    initHook_RegisterClassA();
+    initHook_RegisterClassExA();
+// end of generated code
 }
 
 // The mod is being initialized, load settings, hook functions, and do other
@@ -218,7 +300,7 @@ void initHooks() {
 BOOL Wh_ModInit() {
     auto exe = new WCHAR[MAX_PATH];
     GetModuleFileName(NULL, exe, MAX_PATH);
-    
+
     for (int i = 0;; i++) {
         auto target = Wh_GetStringSetting(L"targetExe[%d].target", i);
         if (target[0] == '\0') {
@@ -228,7 +310,7 @@ BOOL Wh_ModInit() {
             continue;
         }
         Wh_Log(L"load for %s match %s", exe, target);
-        
+
         settings.lcid = Wh_GetIntSetting(L"targetExe[%d].lcid", i);
         settings.codePage = Wh_GetIntSetting(L"targetExe[%d].codePage", i);
         initHooks();
