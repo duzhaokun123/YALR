@@ -73,8 +73,11 @@ LPCWSTR LPCSTRtoLPCWSTR(LPCSTR cstr) {
     if (cstr == nullptr) {
         return nullptr;
     }
+    if (IsBadReadPtr(cstr, 1)) {
+        return (LPCWSTR)cstr; // maybe a id
+    }
     auto cstrLen = strlen(cstr);
-    auto wstrLen = cstrLen;
+    auto wstrLen = cstrLen * 2;
     auto wstr = new WCHAR[wstrLen + 1];
     auto n = MultiByteToWideChar(CP_ACP, 0, cstr, cstrLen, wstr, wstrLen);
     wstr[n] = L'\0';
