@@ -7,6 +7,10 @@ Yet Another [Locale_Remulator](https://github.com/InWILL/Locale_Remulator)
 
 本 Mod 未在(也不会在) Windhawk Mod 仓库发布
 
+> [!WARNING]
+>
+> 缓慢开发 因为重装系统把一堆有问题的测试应用搞没了
+
 > [!TIP]
 > 
 > YALR 是对 [Locale_Remulator](https://github.com/InWILL/Locale_Remulator) 的重写
